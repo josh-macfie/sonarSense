@@ -2,13 +2,14 @@
 // Engineer: 		MacFie
 // Module Name:		Sonar.v
 // Project Name:	Sonar Sensor
-// Target Devices: Basys 2
+// Target Devices:	HC-SR04, Basys 2 (Or other FPGA)
 
 module sonar( input clk,
-	 output trigger,
+		 output trigger,
 		 input pulse,
 		 output state);
 
+	
 reg [25:0] count;
 reg n_trigger;
 reg old_pulse;
@@ -26,10 +27,14 @@ status = 33'b0;
 end
 
 always @(posedge clk) begin
+	//Always add one to count, this is the overall counter for the script
 	count = count + 1;
-	n_trigger = ~&(count[24:10]);//Pulse of 10.24us every 83ms
+	//This is used to pick a very specific time out for trigger control
+	//This count is mased on a 64 MHz clock
+	n_trigger = ~&(count[24:10]);	//Pulse of us every ms
 	if (~&(count[24:11])) begin
-		if (n_trigger) begin //Trigger is active low
+		//If ~&(count[24:10]) is 1 count the pulse AND OR send that count out to the status if statement
+		if (n_trigger) begin
 			if (pulse == 1) begin
 				pulse_count = pulse_count + 1;
 			end
@@ -39,6 +44,7 @@ always @(posedge clk) begin
 			end
 		end
 	end
+	// This number is the distance control the status is used as a buffer for filtering (OR filter below)
 	if (count_out > 33'b000000000000000001110100111110000) begin
 		status = status << 1;
 		status[0] = 1;
@@ -50,7 +56,7 @@ always @(posedge clk) begin
 end
 
 assign trigger = n_trigger;
-//Logic OR status here
+//Logic OR filter status here
 assign state = |status;
 
 endmodule
